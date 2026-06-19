@@ -1,0 +1,69 @@
+name: Bug report
+description: Something is not working correctly
+title: "bug: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Fill in as much detail as you can — it speeds up the fix.
+
+  - type: input
+    id: guardianci-version
+    attributes:
+      label: GuardianCI version
+      description: The `__version__` value from `guardianci_ai_review.py`, or the commit SHA you are running.
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: llm-provider
+    attributes:
+      label: LLM provider
+      options:
+        - gemini
+        - openai
+        - anthropic
+        - openai-compatible (Groq / Mistral / Azure / Ollama)
+        - N/A — local scan only
+    validations:
+      required: true
+
+  - type: dropdown
+    id: vcs-platform
+    attributes:
+      label: VCS platform
+      options:
+        - GitHub
+        - GitLab
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant workflow logs
+      description: Paste the relevant lines from the Actions run. Redact secrets and API keys.
+      render: text
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Anything else that might help — model name, diff size, error messages.

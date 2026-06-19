@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question / discussion
+    url: https://github.com/noobbatman/-GuardianCI/discussions
+    about: Ask questions and discuss ideas in GitHub Discussions before opening an issue.
+  - name: Security vulnerability
+    url: https://github.com/noobbatman/-GuardianCI/security/advisories/new
+    about: Report security vulnerabilities privately — do not open a public issue.

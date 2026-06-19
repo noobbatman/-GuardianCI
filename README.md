@@ -1,5 +1,9 @@
 # GuardianCI
 
+[![Lint](https://github.com/noobbatman/-GuardianCI/actions/workflows/lint.yml/badge.svg)](https://github.com/noobbatman/-GuardianCI/actions/workflows/lint.yml)
+[![Test](https://github.com/noobbatman/-GuardianCI/actions/workflows/test.yml/badge.svg)](https://github.com/noobbatman/-GuardianCI/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 AI-powered security compliance review for every pull request. GuardianCI reviews your PR diff with any major LLM, posts inline findings with compliance citations, blocks merges on critical issues, and tracks your security posture over time — on GitHub and GitLab.
 
 ---
@@ -308,6 +312,20 @@ Runtime dependencies are declared in `pyproject.toml`, constrained in `requireme
 | `CONTRIBUTING.md` | Dev setup, test/lint commands, PR guidelines |
 | `CHANGELOG.md` | Version history |
 | `.github/CODEOWNERS` | Code ownership for review assignment |
+
+---
+
+## Contributing
+
+Contributions are welcome. The most common contributions are:
+
+- **New LLM provider** — add `_call_<provider>()` + `_call_<provider>_fix()` + pricing entry
+- **New detection pattern** — add a regex to `local_security_findings()` + two tests (trigger + no false positive)
+- **New VCS platform** — context reader + post function + CI template
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for step-by-step guides on each, including the exact functions to add and how to write the required tests. All tests run without any LLM API key.
+
+Please read [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) before participating. For security vulnerabilities, use the process described in [SECURITY.md](SECURITY.md) — do not open a public issue.
 
 ---
 

@@ -1,0 +1,60 @@
+name: New LLM provider request
+description: Request support for an LLM provider not yet supported by GuardianCI
+title: "provider: add support for "
+labels: ["enhancement", "new-provider"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        GuardianCI supports any OpenAI-compatible endpoint via `GUARDIANCI_LLM_PROVIDER=openai-compatible`.
+        Before requesting a new provider, check whether setting `GUARDIANCI_LLM_BASE_URL` to the provider's
+        base URL already works — many providers (Groq, Mistral, Together, Anyscale) are already compatible.
+
+  - type: input
+    id: provider-name
+    attributes:
+      label: Provider name
+      placeholder: "e.g. Cohere, AI21, Bedrock"
+    validations:
+      required: true
+
+  - type: input
+    id: provider-url
+    attributes:
+      label: API documentation URL
+      placeholder: "https://docs.example.com/api"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: api-style
+    attributes:
+      label: API style
+      description: Does this provider's chat completion API match the OpenAI request/response shape?
+      options:
+        - "Yes — OpenAI-compatible (already works via openai-compatible provider)"
+        - "Partially — some differences"
+        - "No — completely different API"
+    validations:
+      required: true
+
+  - type: textarea
+    id: differences
+    attributes:
+      label: Key API differences
+      description: If not fully OpenAI-compatible, describe the request/response shape differences.
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why is this provider valuable?
+      description: Use case, pricing advantage, performance, or unique capabilities.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Willing to implement?
+      options:
+        - label: I am interested in submitting the `_call_<provider>()` implementation as a PR.
