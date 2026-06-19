@@ -122,7 +122,9 @@ class FalsePositiveExclusion:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run GuardianCI Gemini security review.")
+    parser = argparse.ArgumentParser(
+        description="Run GuardianCI Gemini security review."
+    )
     parser.add_argument("--base-ref", default=os.getenv("GITHUB_BASE_REF", "main"))
     parser.add_argument("--model", default=os.getenv("GEMINI_MODEL", DEFAULT_MODEL))
     parser.add_argument(
@@ -177,9 +179,13 @@ def main() -> int:
         diff_lines = count_diff_lines(relevant_patches)
         large_diff = diff_lines > LARGE_DIFF_LINE_THRESHOLD
         if large_diff:
-            high_risk_patches, skipped_patches = partition_patches_by_risk(relevant_patches)
+            high_risk_patches, skipped_patches = partition_patches_by_risk(
+                relevant_patches
+            )
             skipped_files = [path for path, _ in skipped_patches]
-            gemini_patches = high_risk_patches if high_risk_patches else relevant_patches
+            gemini_patches = (
+                high_risk_patches if high_risk_patches else relevant_patches
+            )
             print(
                 f"GuardianCI large-diff mode: {diff_lines} added lines. "
                 f"Sending {len(gemini_patches)} high-risk file(s) to Gemini; "
@@ -245,7 +251,9 @@ def main() -> int:
                     exclusions=exclusions,
                     skipped_files=skipped_files,
                 )
-                findings, validation_errors = validate_findings(raw_response, changed_lines)
+                findings, validation_errors = validate_findings(
+                    raw_response, changed_lines
+                )
                 findings = merge_findings(local_findings, findings)
                 gemini_ran = True
 
@@ -343,7 +351,9 @@ def main() -> int:
             print("GuardianCI auto-fix is disabled for this run.")
             return 0
         try:
-            result = prepare_auto_fix_pull_request(context, critical_findings, model=args.model)
+            result = prepare_auto_fix_pull_request(
+                context, critical_findings, model=args.model
+            )
             if result:
                 post_auto_fix_comment(context, result)
         except Exception as exc:
@@ -357,7 +367,9 @@ def main() -> int:
             print(f"GuardianCI auto-fix failed: {exc}")
         return 0
 
-    body = render_review_body(findings, validation_errors, truncated, gemini_ran=gemini_ran)
+    body = render_review_body(
+        findings, validation_errors, truncated, gemini_ran=gemini_ran
+    )
     if not gemini_ran:
         body += (
             "\n\nGemini review is disabled for this run to protect API quota. "
@@ -370,7 +382,9 @@ def main() -> int:
     if critical_findings:
         if not args.review_only and truthy(args.auto_fix_enabled):
             try:
-                result = prepare_auto_fix_pull_request(context, critical_findings, model=args.model)
+                result = prepare_auto_fix_pull_request(
+                    context, critical_findings, model=args.model
+                )
                 if result:
                     post_auto_fix_comment(context, result)
             except Exception as exc:
@@ -533,7 +547,13 @@ def sha_already_reviewed(sha: str, branch: str) -> bool:
         return False
     sha_short = sha[:12]
     subprocess.run(
-        ["git", "fetch", "--no-tags", "origin", f"{branch}:refs/remotes/origin/{branch}"],
+        [
+            "git",
+            "fetch",
+            "--no-tags",
+            "origin",
+            f"{branch}:refs/remotes/origin/{branch}",
+        ],
         check=False,
         text=True,
         capture_output=True,
@@ -547,7 +567,9 @@ def sha_already_reviewed(sha: str, branch: str) -> bool:
     if result.returncode != 0:
         return False
     return any(
-        sha_short in entry for entry in result.stdout.splitlines() if entry.endswith(".json")
+        sha_short in entry
+        for entry in result.stdout.splitlines()
+        if entry.endswith(".json")
     )
 
 
@@ -555,11 +577,17 @@ def estimate_gemini_cost(input_tokens: int, output_tokens: int, model: str) -> f
     """Return an estimated USD cost for one Gemini call. Intended for logging only."""
     model_lower = model.lower()
     rates = next(
-        (rates for prefix, rates in _GEMINI_PRICING.items() if model_lower.startswith(prefix)),
+        (
+            rates
+            for prefix, rates in _GEMINI_PRICING.items()
+            if model_lower.startswith(prefix)
+        ),
         (0.075, 0.30),  # default to Flash pricing when model is unrecognised
     )
     input_usd_per_m, output_usd_per_m = rates
-    return (input_tokens * input_usd_per_m + output_tokens * output_usd_per_m) / 1_000_000
+    return (
+        input_tokens * input_usd_per_m + output_tokens * output_usd_per_m
+    ) / 1_000_000
 
 
 def truncate_diff(patches: list[tuple[str, str]], max_chars: int) -> tuple[str, bool]:
@@ -570,7 +598,9 @@ def truncate_diff(patches: list[tuple[str, str]], max_chars: int) -> tuple[str, 
         addition = len(patch) + 2
         if total + addition > max_chars:
             if not chunks:
-                chunks.append(patch[:max_chars] + "\n... [GuardianCI truncated this file diff]")
+                chunks.append(
+                    patch[:max_chars] + "\n... [GuardianCI truncated this file diff]"
+                )
             truncated = True
             break
         chunks.append(patch)
@@ -591,7 +621,9 @@ def changed_new_lines(patches: list[tuple[str, str]]) -> dict[str, set[int]]:
 
 def iter_added_lines(path: str, patch: str) -> list[tuple[str, int, str]]:
     return [
-        (path, line_no, line) for line_no, line, is_added in parse_hunk_lines(patch) if is_added
+        (path, line_no, line)
+        for line_no, line, is_added in parse_hunk_lines(patch)
+        if is_added
     ]
 
 
@@ -706,7 +738,9 @@ def local_security_findings(
                     ),
                     line,
                 )
-            if re.search(r"\b(print|logger\.\w+)\s*\(.*\b(ssn|password|token|api_key)\b", lowered):
+            if re.search(
+                r"\b(print|logger\.\w+)\s*\(.*\b(ssn|password|token|api_key)\b", lowered
+            ):
                 add_if_not_excluded(
                     Finding(
                         file=file_path,
@@ -726,7 +760,13 @@ def local_security_findings(
 
 def load_false_positive_exclusions(branch: str) -> list[FalsePositiveExclusion]:
     subprocess.run(
-        ["git", "fetch", "--no-tags", "origin", f"{branch}:refs/remotes/origin/{branch}"],
+        [
+            "git",
+            "fetch",
+            "--no-tags",
+            "origin",
+            f"{branch}:refs/remotes/origin/{branch}",
+        ],
         check=False,
         text=True,
         capture_output=True,
@@ -746,7 +786,9 @@ def load_false_positive_exclusions(branch: str) -> list[FalsePositiveExclusion]:
         print(f"GuardianCI ignored invalid false-positive exclusions JSON: {exc}")
         return []
 
-    raw_exclusions = payload.get("exclusions", payload) if isinstance(payload, dict) else payload
+    raw_exclusions = (
+        payload.get("exclusions", payload) if isinstance(payload, dict) else payload
+    )
     if not isinstance(raw_exclusions, list):
         return []
 
@@ -841,7 +883,9 @@ def format_false_positive_exclusions(exclusions: list[FalsePositiveExclusion]) -
             f"code_context_hash={exclusion.code_context_hash or 'not-required'}"
         )
     if len(exclusions) > 20:
-        lines.append(f"- ... {len(exclusions) - 20} more exclusion(s) omitted from prompt")
+        lines.append(
+            f"- ... {len(exclusions) - 20} more exclusion(s) omitted from prompt"
+        )
     return "\n".join(lines)
 
 
@@ -877,7 +921,9 @@ def call_gemini(
         from google import genai
         from google.genai import types
     except ImportError as exc:
-        raise RuntimeError("google-genai is required for GuardianCI AI review.") from exc
+        raise RuntimeError(
+            "google-genai is required for GuardianCI AI review."
+        ) from exc
 
     client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
@@ -1026,7 +1072,9 @@ BOUNDED FILE CONTEXT:
 """.strip()
 
 
-def call_gemini_fix(file_path: str, file_text: str, finding: Finding, *, model: str) -> str:
+def call_gemini_fix(
+    file_path: str, file_text: str, finding: Finding, *, model: str
+) -> str:
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY is not set.")
@@ -1076,7 +1124,9 @@ def validate_fix_payload(payload: Any) -> str:
         raise ValueError("Gemini auto-fix response must be an object.")
     replacement = payload.get("replacement")
     if not isinstance(replacement, str) or not replacement.strip():
-        raise ValueError("Gemini auto-fix response must include a non-empty replacement.")
+        raise ValueError(
+            "Gemini auto-fix response must include a non-empty replacement."
+        )
     cleaned_replacement = strip_code_fence(replacement)
     if not cleaned_replacement.strip():
         raise ValueError(
@@ -1092,7 +1142,9 @@ def strip_code_fence(value: str) -> str:
     return cleaned
 
 
-def build_fix_context(file_text: str, finding: Finding, *, radius: int = FIX_CONTEXT_RADIUS) -> str:
+def build_fix_context(
+    file_text: str, finding: Finding, *, radius: int = FIX_CONTEXT_RADIUS
+) -> str:
     lines = file_text.splitlines()
     imports = [
         (idx, line)
@@ -1109,16 +1161,22 @@ def build_fix_context(file_text: str, finding: Finding, *, radius: int = FIX_CON
         chunks.append("")
 
     chunks.append(f"Context window lines {start}-{end}:")
-    chunks.extend(f"{line_no}: {lines[line_no - 1]}" for line_no in range(start, end + 1))
+    chunks.extend(
+        f"{line_no}: {lines[line_no - 1]}" for line_no in range(start, end + 1)
+    )
     return "\n".join(chunks)
 
 
 def validate_findings(
     payload: Any, changed_lines: dict[str, set[int]]
 ) -> tuple[list[Finding], list[str]]:
-    raw_findings = payload.get("findings", payload) if isinstance(payload, dict) else payload
+    raw_findings = (
+        payload.get("findings", payload) if isinstance(payload, dict) else payload
+    )
     if not isinstance(raw_findings, list):
-        raise json.JSONDecodeError("Gemini JSON must contain a findings array", str(payload), 0)
+        raise json.JSONDecodeError(
+            "Gemini JSON must contain a findings array", str(payload), 0
+        )
 
     valid: list[Finding] = []
     errors: list[str] = []
@@ -1153,13 +1211,17 @@ def validate_findings(
             errors.append(f"Finding {idx} has invalid severity: {severity}.")
             continue
         if line_start < 1 or line_end < line_start:
-            errors.append(f"Finding {idx} has invalid line range: {line_start}-{line_end}.")
+            errors.append(
+                f"Finding {idx} has invalid line range: {line_start}-{line_end}."
+            )
             continue
         if not issue or not suggested_fix:
             errors.append(f"Finding {idx} must include issue and suggested_fix.")
             continue
         if remediation_urgency not in ALLOWED_REMEDIATION_URGENCIES:
-            errors.append(f"Finding {idx} has invalid remediation_urgency: {remediation_urgency}.")
+            errors.append(
+                f"Finding {idx} has invalid remediation_urgency: {remediation_urgency}."
+            )
             continue
 
         valid.append(
@@ -1237,7 +1299,9 @@ def write_review_result(
         payload["gemini_input_tokens"] = gemini_usage.get("input_tokens", 0)
         payload["gemini_output_tokens"] = gemini_usage.get("output_tokens", 0)
         payload["gemini_cost_usd"] = gemini_usage.get("cost_usd", 0.0)
-    Path(path).write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    Path(path).write_text(
+        json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8"
+    )
 
 
 def normalize_frameworks(value: Any) -> tuple[str, ...]:
@@ -1269,7 +1333,9 @@ def render_review_body(
     gemini_ran: bool = True,
 ) -> str:
     review_label = (
-        "GuardianCI Gemini compliance review" if gemini_ran else "GuardianCI compliance review"
+        "GuardianCI Gemini compliance review"
+        if gemini_ran
+        else "GuardianCI compliance review"
     )
     if not findings:
         body = f"{review_label} found no blocking security findings."
@@ -1305,14 +1371,18 @@ def prepare_auto_fix_pull_request(
     context: dict[str, Any], critical_findings: list[Finding], *, model: str
 ) -> AutoFixResult | None:
     if context.get("head_repo") != context.get("repo"):
-        print("GuardianCI auto-fix skipped because forked PR branches are not supported yet.")
+        print(
+            "GuardianCI auto-fix skipped because forked PR branches are not supported yet."
+        )
         return None
 
     selected = critical_findings[:MAX_AUTOFIX_FINDINGS]
     if not selected:
         return None
 
-    branch = auto_fix_branch_name(str(context.get("head_sha") or "unknown"), selected[0].issue)
+    branch = auto_fix_branch_name(
+        str(context.get("head_sha") or "unknown"), selected[0].issue
+    )
     run_git(["config", "user.name", "GuardianCI Bot"])
     run_git(["config", "user.email", "guardianci-bot@users.noreply.github.com"])
     run_git(["checkout", "-B", branch])
@@ -1337,11 +1407,15 @@ def prepare_auto_fix_pull_request(
 
     unique_files = sorted(set(fixed_files))
     if not has_git_changes(unique_files):
-        print("GuardianCI auto-fix produced no actual file changes; skipping PR creation.")
+        print(
+            "GuardianCI auto-fix produced no actual file changes; skipping PR creation."
+        )
         return None
 
     run_git(["add", *unique_files])
-    run_git(["commit", "-m", f"GuardianCI auto-fix: {safe_summary(selected[0].issue, 60)}"])
+    run_git(
+        ["commit", "-m", f"GuardianCI auto-fix: {safe_summary(selected[0].issue, 60)}"]
+    )
     run_git(["push", "--force-with-lease", "origin", f"HEAD:{branch}"])
 
     pr_url, pr_number = create_draft_fix_pr(
@@ -1365,7 +1439,9 @@ def prepare_auto_fix_pull_request(
 
 
 def auto_fix_branch_name(head_sha: str, issue: str) -> str:
-    slug = re.sub(r"[^a-z0-9]+", "-", issue.lower()).strip("-")[:42] or "critical-finding"
+    slug = (
+        re.sub(r"[^a-z0-9]+", "-", issue.lower()).strip("-")[:42] or "critical-finding"
+    )
     short_sha = re.sub(r"[^a-f0-9]", "", head_sha.lower())[:8] or "unknown"
     return f"guardianCI/fix-{short_sha}-{slug}"
 
@@ -1375,12 +1451,16 @@ def safe_summary(text: str, limit: int, *, fallback: str = "security finding") -
     return (normalized or fallback)[:limit]
 
 
-def apply_line_replacement(path: Path, line_start: int, line_end: int, replacement: str) -> None:
+def apply_line_replacement(
+    path: Path, line_start: int, line_end: int, replacement: str
+) -> None:
     text = path.read_text(encoding="utf-8")
     had_trailing_newline = text.endswith("\n")
     lines = text.splitlines()
     if line_start < 1 or line_end < line_start or line_end > len(lines):
-        raise ValueError(f"Invalid replacement range for {path}: {line_start}-{line_end}")
+        raise ValueError(
+            f"Invalid replacement range for {path}: {line_start}-{line_end}"
+        )
 
     replacement_lines = strip_code_fence(replacement).splitlines()
     lines[line_start - 1 : line_end] = replacement_lines
@@ -1422,9 +1502,13 @@ def create_draft_fix_pr(
         "draft": True,
         "maintainer_can_modify": True,
     }
-    response = requests.post(url, headers=github_headers(context), json=payload, timeout=20)
+    response = requests.post(
+        url, headers=github_headers(context), json=payload, timeout=20
+    )
     if response.status_code == 422:
-        print("GuardianCI auto-fix PR may already exist or GitHub rejected the draft PR request.")
+        print(
+            "GuardianCI auto-fix PR may already exist or GitHub rejected the draft PR request."
+        )
         return None, None
     response.raise_for_status()
     data = response.json()
@@ -1438,7 +1522,8 @@ def auto_fix_pr_body(
     needs_human_review: bool,
 ) -> str:
     finding_lines = "\n".join(
-        f"- `{finding.file}:{finding.line_start}` {finding.issue}" for finding in findings
+        f"- `{finding.file}:{finding.line_start}` {finding.issue}"
+        for finding in findings
     )
     file_lines = "\n".join(f"- `{file_path}`" for file_path in fixed_files)
     review_note = (
@@ -1482,7 +1567,9 @@ def post_issue_comment(context: dict[str, Any], body: str) -> None:
     response.raise_for_status()
 
 
-def add_issue_labels(context: dict[str, Any], issue_number: int, labels: list[str]) -> None:
+def add_issue_labels(
+    context: dict[str, Any], issue_number: int, labels: list[str]
+) -> None:
     url = f"https://api.github.com/repos/{context['repo']}/issues/{issue_number}/labels"
     response = requests.post(
         url,
@@ -1496,7 +1583,9 @@ def add_issue_labels(context: dict[str, Any], issue_number: int, labels: list[st
     response.raise_for_status()
 
 
-def request_fix_pr_reviewer(context: dict[str, Any], pr_number: int, reviewer: str) -> None:
+def request_fix_pr_reviewer(
+    context: dict[str, Any], pr_number: int, reviewer: str
+) -> None:
     url = f"https://api.github.com/repos/{context['repo']}/pulls/{pr_number}/requested_reviewers"
     response = requests.post(
         url,
@@ -1506,7 +1595,9 @@ def request_fix_pr_reviewer(context: dict[str, Any], pr_number: int, reviewer: s
     )
     if response.status_code in {201, 422}:
         if response.status_code == 422:
-            print(f"GuardianCI could not request reviewer `{reviewer}` for PR #{pr_number}.")
+            print(
+                f"GuardianCI could not request reviewer `{reviewer}` for PR #{pr_number}."
+            )
         return
     response.raise_for_status()
 
@@ -1576,7 +1667,9 @@ def post_review(
     if comments:
         payload["comments"] = comments
 
-    response = requests.post(url, headers=github_headers(context), json=payload, timeout=20)
+    response = requests.post(
+        url, headers=github_headers(context), json=payload, timeout=20
+    )
     if response.status_code == 422 and comments:
         # If GitHub rejects inline positions, keep the review signal as a body-only review.
         print(
@@ -1584,7 +1677,9 @@ def post_review(
             "(lines may be outside the diff context window). Falling back to body-only review."
         )
         payload.pop("comments", None)
-        response = requests.post(url, headers=github_headers(context), json=payload, timeout=20)
+        response = requests.post(
+            url, headers=github_headers(context), json=payload, timeout=20
+        )
     response.raise_for_status()
 
 

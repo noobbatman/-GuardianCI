@@ -36,7 +36,9 @@ def main() -> int:
     review_path = write_review_record(result)
     reviews = load_reviews()
     summary = build_summary(reviews)
-    Path(SUMMARY_FILE).write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
+    Path(SUMMARY_FILE).write_text(
+        json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8"
+    )
     Path(BADGE_FILE).write_text(render_badge(summary), encoding="utf-8")
     Path(DASHBOARD_FILE).write_text(render_dashboard(summary), encoding="utf-8")
 
@@ -77,7 +79,9 @@ def write_review_record(result: dict[str, Any]) -> Path:
     timestamp = safe_slug(str(result.get("timestamp") or datetime.now(UTC).isoformat()))
     sha = safe_slug(str(result.get("sha") or "unknown"))[:12] or "unknown"
     review_path = Path(REVIEWS_DIR) / f"{timestamp}-{sha}.json"
-    review_path.write_text(json.dumps(result, indent=2, sort_keys=True), encoding="utf-8")
+    review_path.write_text(
+        json.dumps(result, indent=2, sort_keys=True), encoding="utf-8"
+    )
     return review_path
 
 
@@ -93,11 +97,19 @@ def load_reviews() -> list[dict[str, Any]]:
 
 def build_summary(reviews: list[dict[str, Any]]) -> dict[str, Any]:
     now = datetime.now(UTC)
-    recent = [review for review in reviews if review_timestamp(review) >= now - timedelta(days=30)]
+    recent = [
+        review
+        for review in reviews
+        if review_timestamp(review) >= now - timedelta(days=30)
+    ]
     score_values = [int(review.get("score", 100)) for review in recent]
-    all_findings = [finding for review in reviews for finding in review.get("findings", [])]
+    all_findings = [
+        finding for review in reviews for finding in review.get("findings", [])
+    ]
     top_files = Counter(str(finding.get("file", "unknown")) for finding in all_findings)
-    severity_counts = Counter(str(finding.get("severity", "INFO")) for finding in all_findings)
+    severity_counts = Counter(
+        str(finding.get("severity", "INFO")) for finding in all_findings
+    )
     frameworks = Counter(
         framework
         for finding in all_findings
@@ -105,7 +117,9 @@ def build_summary(reviews: list[dict[str, Any]]) -> dict[str, Any]:
         if framework
     )
 
-    rolling_score = round(sum(score_values) / len(score_values), 2) if score_values else 100
+    rolling_score = (
+        round(sum(score_values) / len(score_values), 2) if score_values else 100
+    )
     return {
         "schema_version": 1,
         "generated_at": now.isoformat().replace("+00:00", "Z"),
@@ -114,7 +128,8 @@ def build_summary(reviews: list[dict[str, Any]]) -> dict[str, Any]:
         "total_findings": len(all_findings),
         "severity_breakdown": dict(sorted(severity_counts.items())),
         "top_vulnerable_modules": [
-            {"file": file_path, "findings": count} for file_path, count in top_files.most_common(5)
+            {"file": file_path, "findings": count}
+            for file_path, count in top_files.most_common(5)
         ],
         "top_frameworks": [
             {"framework": framework, "findings": count}
@@ -129,7 +144,9 @@ def build_summary(reviews: list[dict[str, Any]]) -> dict[str, Any]:
                 "total_warn": review.get("total_warn", 0),
                 "timestamp": review.get("timestamp"),
             }
-            for review in sorted(reviews, key=lambda item: str(item.get("timestamp", "")))[-30:]
+            for review in sorted(
+                reviews, key=lambda item: str(item.get("timestamp", ""))
+            )[-30:]
         ],
     }
 
@@ -157,7 +174,9 @@ def render_dashboard(summary: dict[str, Any]) -> str:
     rolling_score = html.escape(str(summary.get("rolling_30_day_score", "")))
     total_prs = html.escape(str(summary.get("total_prs_reviewed", "")))
     total_findings = html.escape(str(summary.get("total_findings", "")))
-    severity_breakdown = html.escape(json.dumps(summary.get("severity_breakdown", {}), indent=2))
+    severity_breakdown = html.escape(
+        json.dumps(summary.get("severity_breakdown", {}), indent=2)
+    )
     return f"""<!doctype html>
 <html lang="en">
 <head>
