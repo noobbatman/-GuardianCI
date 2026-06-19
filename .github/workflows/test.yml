@@ -1,4 +1,4 @@
-name: Lint
+name: Test
 
 on:
   pull_request:
@@ -12,10 +12,10 @@ permissions:
   contents: read
 
 jobs:
-  lint:
-    name: Ruff
+  test:
+    name: pytest
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
 
     steps:
       - name: Check out repository
@@ -32,8 +32,5 @@ jobs:
       - name: Install dependencies
         run: uv pip install --system -r requirements/dev.txt
 
-      - name: Ruff check
-        run: ruff check scripts/ tests/
-
-      - name: Ruff format
-        run: ruff format --check scripts/ tests/
+      - name: Run tests
+        run: pytest tests/ -v

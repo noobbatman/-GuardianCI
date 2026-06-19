@@ -34,8 +34,8 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Install AI review dependencies
-        run: uv pip install --system google-genai requests
+      - name: Install dependencies
+        run: uv pip install --system -r requirements/base.txt
 
       - name: Install gitleaks
         run: |
@@ -168,8 +168,8 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Install AI review dependencies
-        run: uv pip install --system google-genai requests
+      - name: Install dependencies
+        run: uv pip install --system -r requirements/base.txt
 
       - name: Prepare GuardianCI auto-fix draft PR
         env:

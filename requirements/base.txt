@@ -1,0 +1,9 @@
+# GuardianCI runtime dependencies — direct deps, version-constrained.
+#
+# For a fully-pinned lockfile including transitive deps, run:
+#   uv pip compile pyproject.toml -o requirements/base.lock --generate-hashes
+#
+# To update this file after changing pyproject.toml:
+#   uv pip compile pyproject.toml -o requirements/base.txt
+requests>=2.32.0,<3
+google-genai>=1.0.0,<3

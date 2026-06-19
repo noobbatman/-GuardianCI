@@ -1,0 +1,48 @@
+[project]
+name = "guardianci"
+version = "0.1.0"
+description = "AI-powered PR security, compliance, and auto-fix review"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+keywords = ["security", "ci-cd", "llm", "compliance", "github-actions", "gitlab-ci"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: Software Development :: Quality Assurance",
+]
+
+# requests is always needed (VCS API calls, OpenAI-compat, Anthropic calls).
+# google-genai is optional — only required when GUARDIANCI_LLM_PROVIDER=gemini.
+dependencies = [
+    "requests>=2.32.0",
+]
+
+[project.optional-dependencies]
+gemini = ["google-genai>=1.0.0,<3"]
+dev = [
+    "google-genai>=1.0.0,<3",
+    "pytest>=8.0.0",
+    "ruff>=0.9.0",
+]
+
+[project.urls]
+Repository = "https://github.com/noobbatman/-GuardianCI"
+"Bug Tracker" = "https://github.com/noobbatman/-GuardianCI/issues"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "B", "C4", "UP"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--tb=short"

@@ -1,0 +1,8 @@
+# GuardianCI — code ownership
+# All files require review from the maintainer.
+* @noobbatman
+
+# Security-sensitive files require explicit sign-off.
+SECURITY.md @noobbatman
+.github/workflows/ @noobbatman
+scripts/guardianci_ai_review.py @noobbatman
