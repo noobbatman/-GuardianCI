@@ -46,9 +46,11 @@ Copy these files from this repository into your own:
 - `scripts/guardianci_metrics.py`
 - `scripts/guardianci_false_positive.py`
 
-**Dependencies** → place in `requirements/` at your repo root (the workflow installs from these):
-- `requirements/base.txt`
-- `requirements/dev.txt` _(only needed if you run tests locally)_
+**Dependencies** → place in `requirements/` at your repo root (the workflow installs from the lockfiles):
+- `requirements/base.lock` ← required: hash-pinned, CI installs from this
+- `requirements/base.txt` ← human-readable constraints (used to regenerate the lockfile)
+- `requirements/dev.lock` ← optional: needed for local testing / linting
+- `requirements/dev.txt` ← human-readable dev constraints
 
 **Workflows** → place in `.github/workflows/`:
 - `.github/workflows/guardianci.yml`
@@ -64,8 +66,10 @@ your-repo/
 │   ├── guardianci_false_positive.py
 │   └── ... (your existing scripts)
 ├── requirements/
-│   ├── base.txt              ← required: CI installs from this
-│   └── dev.txt               ← optional: for local development
+│   ├── base.lock             ← required: CI installs from this (hash-pinned)
+│   ├── base.txt              ← constraint spec (used to regenerate base.lock)
+│   ├── dev.lock              ← optional: for local dev/testing
+│   └── dev.txt               ← constraint spec (used to regenerate dev.lock)
 ├── .github/
 │   └── workflows/
 │       ├── guardianci.yml
@@ -74,9 +78,10 @@ your-repo/
 └── ... (rest of your repo)
 ```
 
-> **Important:** `requirements/base.txt` must be present. The workflow runs
-> `uv pip install --system -r requirements/base.txt` — it will fail if the file
-> is missing.
+> **Important:** `requirements/base.lock` must be present. The workflow runs
+> `uv pip install --system -r requirements/base.lock` — it will fail if the file
+> is missing. The lockfile pins every transitive dependency to an exact version
+> and SHA-256 hash, so builds are fully reproducible.
 
 Commit and push to a branch (not main yet — you'll open a PR to test it).
 
@@ -290,8 +295,8 @@ You can query this branch directly, link the badge in your main README, or set `
 To run GuardianCI's test suite locally or contribute to the project:
 
 ```bash
-# Install dev dependencies (includes ruff + pytest)
-uv pip install --system -r requirements/dev.txt
+# Install dev dependencies from the lockfile (hash-pinned, includes ruff + pytest)
+uv pip install --system -r requirements/dev.lock
 
 # Run tests
 pytest

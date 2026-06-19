@@ -8,11 +8,9 @@ import json
 import textwrap
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 import guardianci_ai_review as review
 import guardianci_metrics as metrics
-
+import pytest
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -154,9 +152,7 @@ def test_estimate_gemini_cost_zero_tokens() -> None:
 
 
 def test_estimate_gemini_cost_unknown_model_uses_flash_default() -> None:
-    cost_unknown = review.estimate_gemini_cost(
-        1_000_000, 1_000_000, "some-future-model"
-    )
+    cost_unknown = review.estimate_gemini_cost(1_000_000, 1_000_000, "some-future-model")
     cost_flash = review.estimate_gemini_cost(1_000_000, 1_000_000, "gemini-2.0-flash")
     assert cost_unknown == cost_flash
 
@@ -204,9 +200,7 @@ def test_local_scan_skips_env_var_lookup() -> None:
 
 
 def test_local_scan_detects_sql_injection_python() -> None:
-    patch = _added(
-        ["    query = f\"SELECT * FROM users WHERE id = '{user_id}'\""], start=10
-    )
+    patch = _added(["    query = f\"SELECT * FROM users WHERE id = '{user_id}'\""], start=10)
     findings = review.local_security_findings([_patch("app/db.py", patch)])
     assert any("SQL" in f.issue for f in findings)
 
@@ -426,9 +420,7 @@ def _fake_urlopen(status: int = 200):
 
 def test_webhook_posts_to_url() -> None:
     with patch("urllib.request.urlopen", return_value=_fake_urlopen()) as mock_open:
-        metrics.push_webhook(
-            _SAMPLE_RESULT, _SAMPLE_SUMMARY, url="https://example.com/hook"
-        )
+        metrics.push_webhook(_SAMPLE_RESULT, _SAMPLE_SUMMARY, url="https://example.com/hook")
     mock_open.assert_called_once()
     req = mock_open.call_args[0][0]
     assert req.full_url == "https://example.com/hook"
@@ -444,9 +436,7 @@ def test_webhook_payload_contains_review_and_summary() -> None:
         return _fake_urlopen()
 
     with patch("urllib.request.urlopen", side_effect=fake_open):
-        metrics.push_webhook(
-            _SAMPLE_RESULT, _SAMPLE_SUMMARY, url="https://example.com/hook"
-        )
+        metrics.push_webhook(_SAMPLE_RESULT, _SAMPLE_SUMMARY, url="https://example.com/hook")
 
     payload = json.loads(captured[0].decode())
     assert payload["event"] == "guardianci.review.completed"
@@ -488,9 +478,7 @@ def test_webhook_omits_signature_without_secret() -> None:
         return _fake_urlopen()
 
     with patch("urllib.request.urlopen", side_effect=fake_open):
-        metrics.push_webhook(
-            _SAMPLE_RESULT, _SAMPLE_SUMMARY, url="https://example.com/hook"
-        )
+        metrics.push_webhook(_SAMPLE_RESULT, _SAMPLE_SUMMARY, url="https://example.com/hook")
 
     req = captured_req[0]
     assert req.get_header("X-guardianci-signature-256") is None
@@ -544,9 +532,7 @@ def test_webhook_retries_on_5xx() -> None:
         nonlocal call_count
         call_count += 1
         if call_count < 3:
-            raise urllib.error.HTTPError(
-                req.full_url, 500, "Internal Server Error", {}, None
-            )
+            raise urllib.error.HTTPError(req.full_url, 500, "Internal Server Error", {}, None)
         return _fake_urlopen()
 
     with patch("urllib.request.urlopen", side_effect=server_error_then_ok):

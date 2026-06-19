@@ -161,7 +161,8 @@ your-repo/
 │   ├── guardianci_metrics.py
 │   └── guardianci_false_positive.py
 ├── requirements/
-│   └── base.txt               ← required: CI installs from this
+│   ├── base.lock              ← required: CI installs from this (hash-pinned)
+│   └── base.txt               ← human-readable constraint spec
 └── .github/
     └── workflows/
         ├── guardianci.yml
@@ -287,9 +288,9 @@ assert request.headers["X-GuardianCI-Signature-256"] == f"sha256={expected}"
 - Python 3.11+
 - An API key for your chosen LLM provider
 - GitHub Actions or GitLab CI/CD enabled on your repository
-- The `requirements/base.txt` file from this repo (the workflow installs deps from it)
+- The `requirements/` directory from this repo — CI installs from `base.lock` (hash-pinned, includes all transitive deps with SHA-256 hashes)
 
-Runtime dependencies are declared in `pyproject.toml` and pinned in `requirements/base.txt`. No additional install step is needed — the workflow handles it.
+Runtime dependencies are declared in `pyproject.toml`, constrained in `requirements/base.txt`, and fully pinned with hashes in `requirements/base.lock`. No additional install step is needed — the workflow handles it.
 
 ---
 
@@ -298,8 +299,10 @@ Runtime dependencies are declared in `pyproject.toml` and pinned in `requirement
 | File | Purpose |
 |---|---|
 | `pyproject.toml` | Project metadata, dependency spec, ruff + pytest config |
-| `requirements/base.txt` | Version-constrained runtime deps (installed by CI) |
-| `requirements/dev.txt` | Dev deps: adds ruff + pytest |
+| `requirements/base.txt` | Human-readable runtime dep constraints |
+| `requirements/base.lock` | Hash-pinned lockfile — what CI actually installs |
+| `requirements/dev.txt` | Human-readable dev dep constraints (adds ruff + pytest) |
+| `requirements/dev.lock` | Hash-pinned dev lockfile — what lint/test CI installs |
 | `LICENSE` | MIT |
 | `SECURITY.md` | Vulnerability reporting policy and known detection limits |
 | `CONTRIBUTING.md` | Dev setup, test/lint commands, PR guidelines |

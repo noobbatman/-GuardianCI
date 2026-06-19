@@ -22,12 +22,8 @@ HUNK_RE = re.compile(r"@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Handle GuardianCI /fp feedback.")
-    parser.add_argument(
-        "--branch", default=os.getenv("GUARDIANCI_METRICS_BRANCH", METRICS_BRANCH)
-    )
-    parser.add_argument(
-        "--audit", action="store_true", help="Post the monthly exclusions audit."
-    )
+    parser.add_argument("--branch", default=os.getenv("GUARDIANCI_METRICS_BRANCH", METRICS_BRANCH))
+    parser.add_argument("--audit", action="store_true", help="Post the monthly exclusions audit.")
     args = parser.parse_args()
 
     if args.audit:
@@ -125,18 +121,14 @@ def resolve_target_review_comment(context: dict[str, Any]) -> dict[str, Any] | N
 
 
 def parse_comment_id(body: str) -> int | None:
-    match = re.search(
-        r"(?:comment[_ -]?id[:=]?\s*)?(\d{5,})", body, flags=re.IGNORECASE
-    )
+    match = re.search(r"(?:comment[_ -]?id[:=]?\s*)?(\d{5,})", body, flags=re.IGNORECASE)
     return int(match.group(1)) if match else None
 
 
 def latest_guardianci_review_comment(context: dict[str, Any]) -> dict[str, Any] | None:
     comments = fetch_review_comments(context)
     candidates = [
-        comment
-        for comment in comments
-        if is_guardianci_finding_body(comment.get("body"))
+        comment for comment in comments if is_guardianci_finding_body(comment.get("body"))
     ]
     return candidates[-1] if candidates else None
 
@@ -152,9 +144,7 @@ def fetch_review_comments(context: dict[str, Any]) -> list[dict[str, Any]]:
     return payload if isinstance(payload, list) else []
 
 
-def fetch_review_comment(
-    context: dict[str, Any], comment_id: int
-) -> dict[str, Any] | None:
+def fetch_review_comment(context: dict[str, Any], comment_id: int) -> dict[str, Any] | None:
     url = f"https://api.github.com/repos/{context['repo']}/pulls/comments/{comment_id}"
     response = requests.get(url, headers=github_headers(context), timeout=20)
     if response.status_code == 404:
@@ -164,9 +154,7 @@ def fetch_review_comment(
     return payload if isinstance(payload, dict) else None
 
 
-def exclusion_record(
-    context: dict[str, Any], target: dict[str, Any]
-) -> dict[str, Any] | None:
+def exclusion_record(context: dict[str, Any], target: dict[str, Any]) -> dict[str, Any] | None:
     body = str(target.get("body") or "")
     if not is_guardianci_finding_body(body):
         return None
@@ -236,9 +224,7 @@ def append_exclusion_record(branch: str, record: dict[str, Any]) -> bool:
     ensure_metrics_branch(branch)
     payload = load_local_exclusions()
     exclusions = payload.setdefault("exclusions", [])
-    if any(
-        same_exclusion(item, record) for item in exclusions if isinstance(item, dict)
-    ):
+    if any(same_exclusion(item, record) for item in exclusions if isinstance(item, dict)):
         return False
 
     payload["schema_version"] = 1
@@ -285,9 +271,7 @@ def load_local_exclusions() -> dict[str, Any]:
     return payload
 
 
-def post_confirmation(
-    context: dict[str, Any], target: dict[str, Any], body: str
-) -> None:
+def post_confirmation(context: dict[str, Any], target: dict[str, Any], body: str) -> None:
     if context["event_name"] == "pull_request_review_comment":
         url = (
             f"https://api.github.com/repos/{context['repo']}/pulls/"
@@ -308,33 +292,25 @@ def post_confirmation(
 
 def post_issue_comment(context: dict[str, Any], body: str) -> None:
     url = f"https://api.github.com/repos/{context['repo']}/issues/{context['pr_number']}/comments"
-    response = requests.post(
-        url, headers=github_headers(context), json={"body": body}, timeout=20
-    )
+    response = requests.post(url, headers=github_headers(context), json={"body": body}, timeout=20)
     response.raise_for_status()
 
 
 def post_exclusions_audit(branch: str) -> int:
     exclusions = load_remote_exclusions(branch)
     active = [
-        item
-        for item in exclusions
-        if isinstance(item, dict) and item.get("active") is not False
+        item for item in exclusions if isinstance(item, dict) and item.get("active") is not False
     ]
     issue_number = os.getenv("GUARDIANCI_EXCLUSIONS_AUDIT_ISSUE")
     if not issue_number:
         print(render_audit_body(active))
-        print(
-            "GuardianCI exclusions audit issue is not configured; printed audit only."
-        )
+        print("GuardianCI exclusions audit issue is not configured; printed audit only.")
         return 0
 
     token = os.getenv("GITHUB_TOKEN")
     repo = os.getenv("GITHUB_REPOSITORY")
     if not token or not repo:
-        raise RuntimeError(
-            "GITHUB_TOKEN and GITHUB_REPOSITORY are required for audit comments."
-        )
+        raise RuntimeError("GITHUB_TOKEN and GITHUB_REPOSITORY are required for audit comments.")
 
     context = {"token": token, "repo": repo, "pr_number": int(issue_number)}
     post_issue_comment(context, render_audit_body(active))
@@ -366,9 +342,7 @@ def load_remote_exclusions(branch: str) -> list[dict[str, Any]]:
         payload = json.loads(result.stdout)
     except json.JSONDecodeError:
         return []
-    exclusions = (
-        payload.get("exclusions", payload) if isinstance(payload, dict) else payload
-    )
+    exclusions = payload.get("exclusions", payload) if isinstance(payload, dict) else payload
     return exclusions if isinstance(exclusions, list) else []
 
 

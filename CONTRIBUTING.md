@@ -13,8 +13,8 @@ Thank you for taking the time to contribute.
 git clone https://github.com/noobbatman/-GuardianCI.git
 cd -GuardianCI
 
-# Install development dependencies
-uv pip install --system -r requirements/dev.txt
+# Install development dependencies from the lockfile (hash-pinned)
+uv pip install --system -r requirements/dev.lock
 
 # Verify everything works
 pytest          # runs the test suite
