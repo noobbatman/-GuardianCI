@@ -1,0 +1,116 @@
+# GuardianCI for GitLab CI/CD
+# ─────────────────────────────────────────────────────────────────────────────
+# Drop this file into your repo as .gitlab-ci.yml (or include it from one).
+#
+# Required CI/CD variables (Settings → CI/CD → Variables):
+#   GUARDIANCI_LLM_API_KEY  – API key for your chosen LLM provider.
+#   GITLAB_TOKEN            – Project/Group access token with `api` scope.
+#                             (CI_JOB_TOKEN lacks permission to post MR notes.)
+#
+# Optional variables:
+#   GUARDIANCI_LLM_PROVIDER   gemini | openai | anthropic | openai-compatible
+#                             Default: gemini
+#   GUARDIANCI_LLM_MODEL      Model name, e.g. gemini-2.0-flash / gpt-4o-mini
+#                             Default: gemini-2.0-flash
+#   GUARDIANCI_LLM_BASE_URL   Custom endpoint for openai-compatible providers
+#                             (Groq, Mistral, Azure OpenAI, Ollama, …)
+#   GUARDIANCI_AI_ENABLED     Set false to run local-only scan (no LLM cost)
+#                             Default: true
+#
+# ─────────────────────────────────────────────────────────────────────────────
+
+stages:
+  - security
+
+guardianci-review:
+  stage: security
+  image: python:3.11-slim
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  variables:
+    GUARDIANCI_VCS_PLATFORM: "gitlab"
+    GUARDIANCI_LLM_PROVIDER: "${GUARDIANCI_LLM_PROVIDER:-gemini}"
+    GUARDIANCI_LLM_MODEL: "${GUARDIANCI_LLM_MODEL:-gemini-2.0-flash}"
+    GUARDIANCI_AI_ENABLED: "${GUARDIANCI_AI_ENABLED:-true}"
+    PIP_NO_CACHE_DIR: "1"
+  before_script:
+    # Install the LLM client library for your chosen provider.
+    # Remove/change the package that doesn't apply to your setup.
+    - pip install requests
+    # Gemini:
+    - pip install google-genai || true
+    # OpenAI-compatible (OpenAI, Groq, Mistral, Azure, …):
+    # - pip install openai   # optional – GuardianCI calls the REST API directly
+    # Anthropic:
+    # (no extra package needed – GuardianCI calls the REST API directly)
+    - |
+      # Install gitleaks for secret pre-scan
+      GITLEAKS_VERSION=8.22.1
+      curl -sSfL \
+        "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+        | tar -xz gitleaks
+      install -m 0755 gitleaks /usr/local/bin/gitleaks
+  script:
+    # ── Secret pre-scan (gitleaks) ──────────────────────────────────────────
+    - |
+      git fetch origin "${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}" --no-tags 2>/dev/null || true
+      gitleaks detect --source . \
+        --log-opts "origin/${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}..HEAD" \
+        --no-banner --exit-code 0 \
+        --report-format json --report-path gitleaks-report.json 2>&1 || true
+      if [ -s gitleaks-report.json ]; then
+        COUNT=$(python3 -c "import json; d=json.load(open('gitleaks-report.json')); print(len(d) if isinstance(d,list) else 0)" 2>/dev/null || echo "some")
+        if [ "${GUARDIANCI_AI_ENABLED}" = "false" ]; then
+          echo "ERROR: Gitleaks found ${COUNT} secret(s). AI review is disabled — gitleaks is the only enforcement layer. Fix secrets before merging." >&2
+          cat gitleaks-report.json
+          exit 1
+        else
+          echo "WARNING: Gitleaks found ${COUNT} potential secret(s) — AI review will also flag these as CRITICAL."
+          cat gitleaks-report.json
+        fi
+      fi
+    # ── GuardianCI AI review ────────────────────────────────────────────────
+    - python scripts/guardianci_ai_review.py --review-only
+  artifacts:
+    when: always
+    paths:
+      - guardianci-review-result.json
+    expire_in: 30 days
+  allow_failure: false
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Provider quick-start examples
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Gemini (Google AI Studio — free tier available):
+#   GUARDIANCI_LLM_PROVIDER = gemini
+#   GUARDIANCI_LLM_MODEL    = gemini-2.0-flash
+#   GUARDIANCI_LLM_API_KEY  = AIza…
+#
+# OpenAI:
+#   GUARDIANCI_LLM_PROVIDER = openai
+#   GUARDIANCI_LLM_MODEL    = gpt-4o-mini
+#   GUARDIANCI_LLM_API_KEY  = sk-…
+#
+# Anthropic Claude:
+#   GUARDIANCI_LLM_PROVIDER = anthropic
+#   GUARDIANCI_LLM_MODEL    = claude-haiku-4-5-20251001
+#   GUARDIANCI_LLM_API_KEY  = sk-ant-…
+#
+# Groq (fast free inference via OpenAI-compatible API):
+#   GUARDIANCI_LLM_PROVIDER  = openai-compatible
+#   GUARDIANCI_LLM_BASE_URL  = https://api.groq.com/openai/v1
+#   GUARDIANCI_LLM_MODEL     = llama-3.3-70b-versatile
+#   GUARDIANCI_LLM_API_KEY   = gsk_…
+#
+# Azure OpenAI:
+#   GUARDIANCI_LLM_PROVIDER  = openai-compatible
+#   GUARDIANCI_LLM_BASE_URL  = https://<resource>.openai.azure.com/openai/deployments/<deployment>/
+#   GUARDIANCI_LLM_MODEL     = gpt-4o
+#   GUARDIANCI_LLM_API_KEY   = <azure-api-key>
+#
+# Ollama (self-hosted, offline, $0):
+#   GUARDIANCI_LLM_PROVIDER  = openai-compatible
+#   GUARDIANCI_LLM_BASE_URL  = http://ollama-host:11434/v1
+#   GUARDIANCI_LLM_MODEL     = llama3.2
+#   GUARDIANCI_LLM_API_KEY   = ollama   # any non-empty string
