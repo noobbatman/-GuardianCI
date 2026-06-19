@@ -132,6 +132,12 @@ jobs:
 
       - name: Publish GuardianCI metrics
         # guardianci_metrics.py uses only the standard library; no pip install needed.
+        env:
+          # Optional: set GUARDIANCI_METRICS_WEBHOOK_URL to push every review result
+          # to Datadog, Grafana, Splunk, a custom API, or any HTTP endpoint.
+          # Set GUARDIANCI_METRICS_WEBHOOK_SECRET to sign payloads with HMAC-SHA256.
+          GUARDIANCI_METRICS_WEBHOOK_URL: ${{ secrets.GUARDIANCI_METRICS_WEBHOOK_URL }}
+          GUARDIANCI_METRICS_WEBHOOK_SECRET: ${{ secrets.GUARDIANCI_METRICS_WEBHOOK_SECRET }}
         run: python scripts/guardianci_metrics.py --result guardianci-review-result.json
 
   auto-fix:

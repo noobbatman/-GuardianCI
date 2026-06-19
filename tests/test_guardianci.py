@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 import textwrap
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 import guardianci_ai_review as review
+import guardianci_metrics as metrics
 
 
 # ---------------------------------------------------------------------------
@@ -402,3 +406,156 @@ def test_write_review_result_records_large_diff_flag(tmp_path) -> None:
     data = json.loads(out.read_text())
     assert data["large_diff"] is True
     assert data["skipped_file_count"] == 1
+
+
+# ---------------------------------------------------------------------------
+# push_webhook — metrics delivery
+# ---------------------------------------------------------------------------
+
+_SAMPLE_RESULT = {"schema_version": 1, "total_critical": 2, "score": 60}
+_SAMPLE_SUMMARY = {"rolling_30_day_score": 60.0, "total_prs_reviewed": 5}
+
+
+def _fake_urlopen(status: int = 200):
+    """Return a context-manager mock that simulates urllib urlopen."""
+    cm = MagicMock()
+    cm.__enter__ = MagicMock(return_value=MagicMock(status=status))
+    cm.__exit__ = MagicMock(return_value=False)
+    return cm
+
+
+def test_webhook_posts_to_url() -> None:
+    with patch("urllib.request.urlopen", return_value=_fake_urlopen()) as mock_open:
+        metrics.push_webhook(
+            _SAMPLE_RESULT, _SAMPLE_SUMMARY, url="https://example.com/hook"
+        )
+    mock_open.assert_called_once()
+    req = mock_open.call_args[0][0]
+    assert req.full_url == "https://example.com/hook"
+    assert req.get_method() == "POST"
+    assert req.get_header("Content-type") == "application/json"
+
+
+def test_webhook_payload_contains_review_and_summary() -> None:
+    captured: list[bytes] = []
+
+    def fake_open(req, timeout=None):
+        captured.append(req.data)
+        return _fake_urlopen()
+
+    with patch("urllib.request.urlopen", side_effect=fake_open):
+        metrics.push_webhook(
+            _SAMPLE_RESULT, _SAMPLE_SUMMARY, url="https://example.com/hook"
+        )
+
+    payload = json.loads(captured[0].decode())
+    assert payload["event"] == "guardianci.review.completed"
+    assert payload["schema_version"] == 1
+    assert payload["review"]["total_critical"] == 2
+    assert payload["summary"]["total_prs_reviewed"] == 5
+
+
+def test_webhook_includes_hmac_signature_when_secret_set() -> None:
+    captured_req: list = []
+
+    def fake_open(req, timeout=None):
+        captured_req.append(req)
+        return _fake_urlopen()
+
+    secret = "supersecret"
+    with patch("urllib.request.urlopen", side_effect=fake_open):
+        metrics.push_webhook(
+            _SAMPLE_RESULT,
+            _SAMPLE_SUMMARY,
+            url="https://example.com/hook",
+            secret=secret,
+        )
+
+    req = captured_req[0]
+    sig_header = req.get_header("X-guardianci-signature-256")
+    assert sig_header is not None
+    assert sig_header.startswith("sha256=")
+
+    expected_sig = hmac.new(secret.encode(), req.data, hashlib.sha256).hexdigest()
+    assert sig_header == f"sha256={expected_sig}"
+
+
+def test_webhook_omits_signature_without_secret() -> None:
+    captured_req: list = []
+
+    def fake_open(req, timeout=None):
+        captured_req.append(req)
+        return _fake_urlopen()
+
+    with patch("urllib.request.urlopen", side_effect=fake_open):
+        metrics.push_webhook(
+            _SAMPLE_RESULT, _SAMPLE_SUMMARY, url="https://example.com/hook"
+        )
+
+    req = captured_req[0]
+    assert req.get_header("X-guardianci-signature-256") is None
+
+
+def test_webhook_non_fatal_on_5xx_exhaustion() -> None:
+    import urllib.error
+
+    def always_fail(req, timeout=None):
+        raise urllib.error.HTTPError(req.full_url, 503, "Service Unavailable", {}, None)
+
+    # Must not raise even after all retries fail.
+    with patch("urllib.request.urlopen", side_effect=always_fail):
+        with patch("time.sleep"):  # skip actual sleeps
+            metrics.push_webhook(
+                _SAMPLE_RESULT,
+                _SAMPLE_SUMMARY,
+                url="https://example.com/hook",
+                retries=3,
+            )
+
+
+def test_webhook_does_not_retry_on_4xx() -> None:
+    import urllib.error
+
+    call_count = 0
+
+    def client_error(req, timeout=None):
+        nonlocal call_count
+        call_count += 1
+        raise urllib.error.HTTPError(req.full_url, 400, "Bad Request", {}, None)
+
+    with patch("urllib.request.urlopen", side_effect=client_error):
+        metrics.push_webhook(
+            _SAMPLE_RESULT,
+            _SAMPLE_SUMMARY,
+            url="https://example.com/hook",
+            retries=3,
+        )
+
+    # Should stop after first 4xx — no retries.
+    assert call_count == 1
+
+
+def test_webhook_retries_on_5xx() -> None:
+    import urllib.error
+
+    call_count = 0
+
+    def server_error_then_ok(req, timeout=None):
+        nonlocal call_count
+        call_count += 1
+        if call_count < 3:
+            raise urllib.error.HTTPError(
+                req.full_url, 500, "Internal Server Error", {}, None
+            )
+        return _fake_urlopen()
+
+    with patch("urllib.request.urlopen", side_effect=server_error_then_ok):
+        with patch("time.sleep"):
+            metrics.push_webhook(
+                _SAMPLE_RESULT,
+                _SAMPLE_SUMMARY,
+                url="https://example.com/hook",
+                retries=3,
+            )
+
+    assert call_count == 3  # failed twice, succeeded on third
