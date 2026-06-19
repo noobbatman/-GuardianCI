@@ -46,6 +46,10 @@ Copy these files from this repository into your own:
 - `scripts/guardianci_metrics.py`
 - `scripts/guardianci_false_positive.py`
 
+**Dependencies** → place in `requirements/` at your repo root (the workflow installs from these):
+- `requirements/base.txt`
+- `requirements/dev.txt` _(only needed if you run tests locally)_
+
 **Workflows** → place in `.github/workflows/`:
 - `.github/workflows/guardianci.yml`
 - `.github/workflows/guardianci-false-positive.yml`
@@ -59,6 +63,9 @@ your-repo/
 │   ├── guardianci_metrics.py
 │   ├── guardianci_false_positive.py
 │   └── ... (your existing scripts)
+├── requirements/
+│   ├── base.txt              ← required: CI installs from this
+│   └── dev.txt               ← optional: for local development
 ├── .github/
 │   └── workflows/
 │       ├── guardianci.yml
@@ -66,6 +73,10 @@ your-repo/
 │       └── ... (your existing workflows)
 └── ... (rest of your repo)
 ```
+
+> **Important:** `requirements/base.txt` must be present. The workflow runs
+> `uv pip install --system -r requirements/base.txt` — it will fail if the file
+> is missing.
 
 Commit and push to a branch (not main yet — you'll open a PR to test it).
 
@@ -271,6 +282,28 @@ exclusions/
 ```
 
 You can query this branch directly, link the badge in your main README, or set `GUARDIANCI_METRICS_WEBHOOK_URL` to stream results into any observability platform.
+
+---
+
+## Local development
+
+To run GuardianCI's test suite locally or contribute to the project:
+
+```bash
+# Install dev dependencies (includes ruff + pytest)
+uv pip install --system -r requirements/dev.txt
+
+# Run tests
+pytest
+
+# Run the linter
+ruff check scripts/ tests/
+
+# Auto-fix lint issues and reformat
+ruff check --fix scripts/ tests/ && ruff format scripts/ tests/
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contribution guide and [SECURITY.md](SECURITY.md) for the vulnerability reporting policy and known detection limits.
 
 ---
 

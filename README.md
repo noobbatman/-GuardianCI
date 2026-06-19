@@ -160,15 +160,16 @@ your-repo/
 │   ├── guardianci_ai_review.py
 │   ├── guardianci_metrics.py
 │   └── guardianci_false_positive.py
+├── requirements/
+│   └── base.txt               ← required: CI installs from this
 └── .github/
     └── workflows/
         ├── guardianci.yml
         └── guardianci-false-positive.yml
 ```
 
-Copy `scripts/guardianci_*.py` from this repo into your `scripts/` folder.  
-Copy the workflow files from `.github/workflows/` into your `.github/workflows/`.  
-For GitLab, copy `.gitlab/guardianci.gitlab-ci.yml` to your repo instead.
+Copy `scripts/guardianci_*.py`, the `requirements/` directory, and the workflow files into your repo at the same paths.  
+For GitLab, copy `.gitlab/guardianci.gitlab-ci.yml` to your repo instead (the `requirements/` directory is still needed).
 
 ### 2. Create the metrics branch (GitHub only)
 
@@ -284,12 +285,29 @@ assert request.headers["X-GuardianCI-Signature-256"] == f"sha256={expected}"
 ## Requirements
 
 - Python 3.11+
-- `requests` Python package (installed by the workflow for providers that need it)
 - An API key for your chosen LLM provider
 - GitHub Actions or GitLab CI/CD enabled on your repository
+- The `requirements/base.txt` file from this repo (the workflow installs deps from it)
+
+Runtime dependencies are declared in `pyproject.toml` and pinned in `requirements/base.txt`. No additional install step is needed — the workflow handles it.
+
+---
+
+## Project files
+
+| File | Purpose |
+|---|---|
+| `pyproject.toml` | Project metadata, dependency spec, ruff + pytest config |
+| `requirements/base.txt` | Version-constrained runtime deps (installed by CI) |
+| `requirements/dev.txt` | Dev deps: adds ruff + pytest |
+| `LICENSE` | MIT |
+| `SECURITY.md` | Vulnerability reporting policy and known detection limits |
+| `CONTRIBUTING.md` | Dev setup, test/lint commands, PR guidelines |
+| `CHANGELOG.md` | Version history |
+| `.github/CODEOWNERS` | Code ownership for review assignment |
 
 ---
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE)
