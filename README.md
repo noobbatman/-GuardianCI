@@ -8,6 +8,29 @@ AI-powered security compliance review for every pull request. GuardianCI reviews
 
 ---
 
+## See it in action
+
+<!-- Add a GIF here: open your PR on GitHub, record the inline comments appearing with ScreenToGif / Kap / ShareX, then drag the file into this README on github.com. A 10-second clip beats 10 paragraphs. -->
+
+In a real test against a Python service (9 intentional vulnerabilities planted across one file), GuardianCI posted inline comments at the exact vulnerable lines within 45 seconds:
+
+| Vulnerability | Detected | Severity |
+|---|---|---|
+| Hardcoded database URL + OpenAI API key | ✅ | CRITICAL |
+| Hardcoded JWT secret | ✅ | CRITICAL |
+| SQL injection via f-string interpolation | ✅ ×2 findings | CRITICAL |
+| Command injection via `shell=True` | ✅ | CRITICAL |
+| JWT `alg=none` bypass | ✅ ×2 findings | CRITICAL |
+| TLS verification disabled (`verify=False`) | ✅ | WARN |
+| Wildcard CORS (`["*"]`) | ✅ | WARN |
+| Plaintext password written to debug log | ✅ escalated to CRITICAL | CRITICAL |
+
+**9 CRITICAL · 3 WARN · merge blocked automatically.**
+
+Each finding includes the exact line, a suggested fix, and the compliance framework it violates (PCI-DSS, SOC 2, GDPR Art. 32).
+
+---
+
 ## What it does
 
 When a PR or merge request is opened or updated, GuardianCI:
